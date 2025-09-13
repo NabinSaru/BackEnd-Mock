@@ -6,46 +6,68 @@ const {
   verifyRefreshToken,
 } = require('../utils/jwt');
 const { registerSchema, loginSchema } = require('../validators/auth.validator');
-const redisClient = require('../config/redis'); // assumes you’ve set up a Redis client
+const redisClient = require('../config/redis');
 
 const REFRESH_PREFIX = 'refresh:';
 
 const register = async (req, res) => {
-  const { error, value } = registerSchema.validate(req.body);
+  const { error, value } = registerSchema.validate(req.body, { abortEarly: false });
   if (error) {
-    return res.status(400).json({ error: error.details.map((d) => d.message) });
+    const messages = error.details.map((d) => d.message);
+    const errObj = new Error('Validation failed');
+    errObj.status = 400;
+    errObj.details = messages;
+    throw errObj;
   }
 
   const { email, password } = value;
   const existing = await User.findOne({ email });
   if (existing) {
-    return res.status(409).json({ error: 'Email already registered' });
+    const errObj = new Error('Email already registered');
+    errObj.status = 409;
+    throw errObj;
   }
 
   const hashed = await bcrypt.hash(password, 10);
   const user = new User({ email, password: hashed });
-  await user.save();
+  const savedUser = await user.save();
 
-  const accessToken = generateAccessToken(user);
-  const refreshToken = generateRefreshToken(user);
+  const accessToken = generateAccessToken(savedUser);
+  const refreshToken = generateRefreshToken(savedUser);
 
-  await redisClient.set(`${REFRESH_PREFIX}${refreshToken}`, user._id.toString(), {
-    EX: 7 * 24 * 60 * 60, // 7 days
+  await redisClient.set(`${REFRESH_PREFIX}${refreshToken}`, savedUser._id.toString(), {
+    EX: 7 * 24 * 60 * 60,
   });
 
-  res.status(201).json({ accessToken, refreshToken });
+  res.status(201).json({
+    message: 'User registered successfully',
+    accessToken,
+    refreshToken,
+    user: {
+      id: savedUser._id,
+      email: savedUser.email,
+      createdAt: savedUser.createdAt,
+    },
+  });
 };
 
 const login = async (req, res) => {
-  const { error, value } = loginSchema.validate(req.body);
+  const { error, value } = loginSchema.validate(req.body, { abortEarly: false });
   if (error) {
-    return res.status(400).json({ error: error.details.map((d) => d.message) });
+    const messages = error.details.map((d) => d.message);
+    const errObj = new Error('Validation failed');
+    errObj.status = 400;
+    errObj.details = messages;
+    throw errObj;
   }
 
   const { email, password } = value;
   const user = await User.findOne({ email });
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    return res.status(401).json({ error: 'Invalid credentials' });
+  const isValid = user && await bcrypt.compare(password, user.password);
+  if (!isValid) {
+    const errObj = new Error('Invalid credentials');
+    errObj.status = 401;
+    throw errObj;
   }
 
   const accessToken = generateAccessToken(user);
@@ -55,37 +77,50 @@ const login = async (req, res) => {
     EX: 7 * 24 * 60 * 60,
   });
 
-  res.status(200).json({ accessToken, refreshToken });
+  res.status(200).json({ message: 'User login successful', accessToken, refreshToken });
 };
 
 const refresh = async (req, res) => {
-  const { token } = req.body;
-  if (!token) {
-    return res.status(400).json({ error: 'Refresh token missing' });
+  const { token: oldToken } = req.body;
+  if (!oldToken) {
+    const err = new Error('Refresh token missing');
+    err.status = 400;
+    throw err;
   }
 
-  try {
-    const payload = verifyRefreshToken(token);
-    const storedUserId = await redisClient.get(`${REFRESH_PREFIX}${token}`);
-    if (!storedUserId || storedUserId !== payload.id) {
-      return res.status(403).json({ error: 'Invalid refresh token' });
-    }
-
-    const user = await User.findById(payload.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const newAccessToken = generateAccessToken(user);
-    res.json({ accessToken: newAccessToken });
-  } catch (err) {
-    return res.status(403).json({ error: 'Token expired or invalid' });
+  const payload = verifyRefreshToken(oldToken);
+  const storedUserId = await redisClient.get(`${REFRESH_PREFIX}${oldToken}`);
+  if (!storedUserId || storedUserId !== payload.id) {
+    const err = new Error('Invalid refresh token');
+    err.status = 403;
+    throw err;
   }
+
+  const user = await User.findById(payload.id);
+  if (!user) {
+    const err = new Error('User not found');
+    err.status = 404;
+    throw err;
+  }
+
+  // Rotate token
+  await redisClient.del(`${REFRESH_PREFIX}${oldToken}`);
+  const newRefreshToken = generateRefreshToken(user);
+  await redisClient.set(`${REFRESH_PREFIX}${newRefreshToken}`, user._id.toString(), {
+    EX: 7 * 24 * 60 * 60,
+  });
+
+  const newAccessToken = generateAccessToken(user);
+  res.json({ message: 'New token generated', accessToken: newAccessToken, refreshToken: newRefreshToken });
 };
 
 const logout = async (req, res) => {
   const { token } = req.body;
-  if (!token) return res.status(400).json({ error: 'Token missing' });
+  if (!token) {
+    const errObj = new Error('Token missing');
+    errObj.status = 400;
+    throw errObj;
+  }
 
   await redisClient.del(`${REFRESH_PREFIX}${token}`);
   res.json({ message: 'Logged out successfully' });
