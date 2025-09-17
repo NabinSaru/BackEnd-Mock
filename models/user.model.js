@@ -35,6 +35,11 @@ const userSchema = new mongoose.Schema(
         message: 'Invalid image URL',
       },
     },
+    emailVerified: { type: Boolean, default: false },
+    emailVerificationToken: { type: String },
+    emailVerificationExpires: { type: Date },
+    resetPasswordToken: { type: String },
+    resetPasswordExpires: { type: Date },
   },
   { timestamps: true }
 );
