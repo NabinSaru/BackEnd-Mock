@@ -75,5 +75,6 @@ A secure, modular authentication backend built with **Express**, **MongoDB**, an
 📄 License
 MIT © Nabin Saru
 
-Available APIs: [https://github.com/NabinSaru/BackEnd-Mock-API-Collection.git](Postman API)
+Available APIs: [Postman API](https://github.com/NabinSaru/BackEnd-Mock-API-Collection.git)
+
 
