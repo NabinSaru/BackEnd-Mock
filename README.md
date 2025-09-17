@@ -29,27 +29,32 @@ A secure, modular authentication backend built with **Express**, **MongoDB**, an
 ## 📦 Features
 
 ### 🔐 Authentication
+
 - Login with email + password
 - Secure password hashing with bcrypt
 - JWT access and refresh tokens
 - Redis-backed refresh token storage with expiry
 
 ### 🛡️ Authorization
+
 - Role-based access control (`user`, `admin`)
 - Protected routes with middleware
 - Centralized error handling
 
 ### 📧 Email Flows
+
 - Email verification on registration
 - Resend verification endpoint
 - Forgot password + reset flow
 - Auto-login after password reset
 
 ### 🧪 Validation
+
 - Joi-based schema validation
 - Structured error responses with status codes and details
 
 ### 🚦 Rate Limiting
+
 - Per-IP or per-user limits on sensitive endpoints
 - Configurable via `rate-limiter-flexible`
 - Middleware-based integration
@@ -57,24 +62,22 @@ A secure, modular authentication backend built with **Express**, **MongoDB**, an
 ---
 
 🧼 Tokenization
-• 	Access tokens: short-lived, stateless
-• 	Refresh tokens: stored in Redis with expiry
-• 	Token revocation via Redis key deletion
+•  Access tokens: short-lived, stateless
+•  Refresh tokens: stored in Redis with expiry
+•  Token revocation via Redis key deletion
 
 📬 Email Verification
-• 	Raw HTML emails via Nodemailer
-• 	Secure token with expiry
-• 	Verification via 
+•  Raw HTML emails via Nodemailer
+•  Secure token with expiry
+•  Verification via
 
 🛠️ Future Enhancements
-• 	Device/session tracking
-• 	RBAC admin panel
-• 	OAuth integration
-• 	Audit logging
+•  Device/session tracking
+•  RBAC admin panel
+•  OAuth integration
+•  Audit logging
 
 📄 License
 MIT © Nabin Saru
 
 Available APIs: [Postman API](https://github.com/NabinSaru/BackEnd-Mock-API-Collection.git)
-
-
