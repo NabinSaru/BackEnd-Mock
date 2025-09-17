@@ -7,6 +7,7 @@ const {
 } = require('../utils/jwt');
 const { registerSchema, loginSchema } = require('../validators/auth.validator');
 const redisClient = require('../config/redis');
+const sendEmail = require('../utils/sendEmail');
 
 const REFRESH_PREFIX = 'refresh:';
 
@@ -37,6 +38,14 @@ const register = async (req, res) => {
 
   await redisClient.set(`${REFRESH_PREFIX}${refreshToken}`, savedUser._id.toString(), {
     EX: 7 * 24 * 60 * 60,
+  });
+
+  await sendEmail({
+    to: user.email,
+    from: 'info@app.com',
+    subject: 'Welcome to Our App!',
+    text: `Hello ${user.email},\n\nThanks for registering!`,
+    html: `<h1>Hello ${user.email}</h1><p>Thanks for registering!</p>`,
   });
 
   res.status(201).json({
